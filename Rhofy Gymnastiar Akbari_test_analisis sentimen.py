@@ -19,7 +19,7 @@ from wordcloud import WordCloud
 # Folder = tempat file ini berada. Untuk folder lain, isi manual, mis.:
 # BASE_DIR = "/Users/murniramadhani/Documents/Kuliah Analisis Big Data /Data Sentimen"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_FILE, DATA_FILE, STEM_FILE = "model_nb_sentimen.joblib", "Rhofy Gymnastiar_test_analisis sentimen", "stem_cache.json"
+MODEL_FILE, DATA_FILE, STEM_FILE = "model_nb_sentimen.joblib", "data_bersih_berlabel.csv", "stem_cache.json"
 SEED, TEST_SIZE = 42, 0.2      # HARUS sama dengan notebook agar data uji identik
 COLORS = {"Positif": "#10B981", "Netral": "#F59E0B", "Negatif": "#EF4444"}
 
