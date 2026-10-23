@@ -11,7 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from sklearn.metrics import (accuracy_score, classification_report, confusion_matrix, f1_score,
-                             precision_score, recall_score, roc_auc_score, roc_curve)
+                            precision_score, recall_score, roc_auc_score, roc_curve)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import label_binarize
 from wordcloud import WordCloud
@@ -37,24 +37,17 @@ st.markdown("""
 <div class="hero"><h1>💬 Sentiment Mining Dashboard · Ruangguru</h1>
 <p>Hasil analisis notebook dengan <b>Multinomial Naive Bayes</b> · TF-IDF · SMOTE · Influential Features · Analisis Aspek</p></div>
 """, unsafe_allow_html=True)
-
-
 def kpi(col, label, value, color="#7C3AED"):
     col.markdown(f'<div class="kpi" style="border-left-color:{color}"><div class="l">{label}</div>'
-                 f'<div class="v">{value}</div></div>', unsafe_allow_html=True)
-
-
+                f'<div class="v">{value}</div></div>', unsafe_allow_html=True)
 def _find(name):
     p = os.path.join(BASE_DIR, name)
     return p if os.path.exists(p) else None
-
-
 with st.sidebar:
     st.header(" Hasil Notebook")
     up_model = st.file_uploader("Model (.joblib) – opsional", type="joblib",
                                 help="Isi hanya jika file tidak ada di folder aplikasi.")
     up_data = st.file_uploader("Data bersih (.csv) – opsional", type="csv")
-
 model_src = up_model.getvalue() if up_model else _find(MODEL_FILE)
 data_src = up_data.getvalue() if up_data else _find(DATA_FILE)
 if model_src is None or data_src is None:
@@ -67,21 +60,15 @@ File ini dibuat otomatis oleh **sel terakhir (bagian 11 – Simpan Model)** di n
 atau unggah kedua file lewat sidebar.
 """)
     st.stop()
-
-
 @st.cache_resource(show_spinner="Memuat model...")
 def load_bundle(src):
     return joblib.load(io.BytesIO(src) if isinstance(src, bytes) else src)
-
-
 @st.cache_data(show_spinner="Memuat data...")
 def load_data(src):
     d = pd.read_csv(io.BytesIO(src) if isinstance(src, bytes) else src)
     d["clean_content"] = d["clean_content"].fillna("").astype(str)
     d["at"] = pd.to_datetime(d.get("at"), errors="coerce") if "at" in d.columns else pd.NaT
     return d
-
-
 bundle = load_bundle(model_src)
 df = load_data(data_src)
 vec, model = bundle["vectorizer"], bundle["model"]
@@ -90,16 +77,15 @@ bp = bundle.get("best_params", {})
 cmap = {c: COLORS.get(c, "#6366F1") for c in classes}
 fitur = np.array(vec.get_feature_names_out())
 flp = model.feature_log_prob_
-
-
 @st.cache_resource(show_spinner="Menghitung evaluasi pada data uji...")
 def build_eval(_key, _df, _vec, _model):
     """Membentuk ulang data uji yang SAMA dengan notebook (split deterministik) lalu hanya memprediksi."""
     X_tr, X_te, y_tr, y_te = train_test_split(_df["clean_content"], _df["label"], test_size=TEST_SIZE,
-                                              stratify=_df["label"], random_state=SEED)
+                                            stratify=_df["label"], random_state=SEED)
     cls = list(_model.classes_)
     y_pred = _model.predict(_vec.transform(X_te))
     prob = _model.predict_proba(_vec.transform(X_te))
+
     # ROC One-vs-Rest
     roc = {}
     if len(cls) == 2:
@@ -109,6 +95,7 @@ def build_eval(_key, _df, _vec, _model):
         Y = label_binarize(y_te, classes=cls)
         for i, c in enumerate(cls):
             f, t, _ = roc_curve(Y[:, i], prob[:, i]); roc[c] = (f, t, roc_auc_score(Y[:, i], prob[:, i]))
+
     metrics = {
         "Accuracy": accuracy_score(y_te, y_pred),
         "Precision (macro)": precision_score(y_te, y_pred, average="macro", zero_division=0),
@@ -122,13 +109,10 @@ def build_eval(_key, _df, _vec, _model):
     errors = errors[errors["aktual"] != errors["prediksi"]].sort_values("keyakinan", ascending=False)
     return dict(classes=cls, metrics=metrics, report=rep, cm=confusion_matrix(y_te, y_pred, labels=cls), roc=roc,
                 errors=errors, X_tr=X_tr, y_tr=y_tr, n_tr=len(X_tr), n_te=len(X_te), y_te=y_te, y_pred=y_pred)
-
-
 ev = build_eval(f"{len(df)}-{len(fitur)}-{bundle.get('metrics', {}).get('Accuracy', 0):.6f}", df, vec, model)
 M = ev["metrics"]
 saved_acc = bundle.get("metrics", {}).get("Accuracy")
 in_sync = saved_acc is None or abs(saved_acc - M["Accuracy"]) < 1e-9
-
 with st.sidebar:
     st.divider()
     st.subheader(" Model")
@@ -145,7 +129,6 @@ with st.sidebar:
         st.success("Hasil identik dengan notebook ")
     else:
         st.warning("Akurasi berbeda dari yang tersimpan di notebook. Pastikan model & data berasal dari proses yang sama.")
-
 # =============================================================================
 # 2. FUNGSI BANTU (preprocessing HANYA untuk teks baru pada tab Prediksi)
 # =============================================================================
@@ -176,8 +159,6 @@ if os.path.exists(_STEM_PATH):
         _stem_cache = json.load(open(_STEM_PATH, encoding="utf-8"))
     except (OSError, ValueError):
         _stem_cache = {}
-
-
 @st.cache_resource(show_spinner="Memuat stemmer Sastrawi...")
 def get_stemmer():
     try:
@@ -185,15 +166,11 @@ def get_stemmer():
     except ImportError:
         return None
     return StemmerFactory().create_stemmer()
-
-
 def stem_kata(w):
     if w not in _stem_cache:
         s = get_stemmer()
         _stem_cache[w] = s.stem(w) if s else w
     return _stem_cache[w]
-
-
 def bersihkan_teks(teks):
     t = str(teks).lower()
     t = re.sub(r"http\S+|www\.\S+", " ", t)
@@ -203,15 +180,11 @@ def bersihkan_teks(teks):
     tokens = " ".join(SLANG.get(w, w) for w in t.split()).split()
     tokens = [w for w in tokens if (w not in STOPWORDS or w in NEGATIONS) and w not in DOMAIN_STOPWORDS and len(w) > 1]
     return " ".join(stem_kata(w) for w in tokens)
-
-
 def simpan_stem_cache():
     try:
         json.dump(_stem_cache, open(_STEM_PATH, "w", encoding="utf-8"), ensure_ascii=False)
     except OSError:
         pass
-
-
 ASPEK = {
     "Mentor / Guru": r"guru|mentor|pengajar|tutor|kakak|penjelasan|menjelaskan",
     "Materi & Soal": r"materi|soal|latihan|rangkuman|pembahasan|kuis|pelajaran|kurikulum|bab",
@@ -221,8 +194,6 @@ ASPEK = {
     "Fitur & Tampilan": r"fitur|tampilan|menu|interface|desain|navigasi|opsi",
     "Layanan & Iklan": r"spam|iklan|telepon|sales|cs|customer|layanan|notifikasi|tawar",
 }
-
-
 @st.cache_data(show_spinner=False)
 def aspect_table(_df, key):
     low = _df["content"].astype(str).str.lower()
@@ -231,10 +202,11 @@ def aspect_table(_df, key):
         m = low.str.contains(pola, regex=True); sub = _df[m]
         rows.append({"Aspek": nama, "Jumlah Ulasan": int(m.sum()), "Porsi (%)": m.mean() * 100,
                      "Rata-rata Rating": sub["score"].mean(),
-                     "% Negatif": (sub["label"] == "Negatif").mean() * 100,
-                     "% Netral": (sub["label"] == "Netral").mean() * 100,
+                      "% Negatif": (sub["label"] == "Negatif").mean() * 100,
+                      "% Netral": (sub["label"] == "Netral").mean() * 100,
                      "% Positif": (sub["label"] == "Positif").mean() * 100})
     return pd.DataFrame(rows).sort_values("Jumlah Ulasan", ascending=False).reset_index(drop=True)
+
 
 
 def influential(top_n=15):
@@ -243,8 +215,9 @@ def influential(top_n=15):
         diff = flp[i] - np.delete(flp, i, axis=0).mean(axis=0)
         for rank, j in enumerate(np.argsort(diff)[::-1][:top_n], 1):
             rows.append({"Kelas": c, "Rank": rank, "Fitur": fitur[j], "Skor Pengaruh": diff[j],
-                         "Rasio Odds": float(np.exp(diff[j])), "log P(kata|kelas)": flp[i, j]})
+                        "Rasio Odds": float(np.exp(diff[j])), "log P(kata|kelas)": flp[i, j]})
     return pd.DataFrame(rows)
+
 
 
 def prediksi(teks, top_k=8):
@@ -257,24 +230,25 @@ def prediksi(teks, top_k=8):
     pred, ref = classes[order[0]], classes[order[1]]
     kontrib = [{"Kata": fitur[j], "TF-IDF": float(X[0, j]),
                 f"Dorongan ke {pred}": float((flp[classes.index(pred), j] - flp[classes.index(ref), j]) * X[0, j])}
-               for j in X.nonzero()[1]]
+            for j in X.nonzero()[1]]
     cdf = pd.DataFrame(kontrib)
     if not cdf.empty:
         cdf = cdf.sort_values(cdf.columns[-1], ascending=False).head(top_k).reset_index(drop=True)
     return {"clean": bersih, "pred": pred, "proba": dict(zip(classes, p)), "contrib": cdf}
 
 
+
 # =============================================================================
 # 3. TAMPILAN
 # =============================================================================
-tabs = st.tabs(["🏠 Ringkasan", "📊 Eksplorasi Data", "☁ Analisis Teks", "🎯 Evaluasi Model",
-                "⭐ Influential Features", "🧩 Aspek & Anomali", "🔮 Prediksi", "📘 Metodologi"])
+tabs = st.tabs(["🏠 Ringkasan", "📊 Eksplorasi Data", "☁ Analisis Teks", "🤖 Evaluasi Model",
+                 "⭐ Influential Features", "🧩 Aspek & Anomali", "🔮 Prediksi", "📘 Metodologi"])
 
 # ---------------------------------------------------------------- RINGKASAN
 with tabs[0]:
     c = st.columns(5)
     for col, (k, v), colr in zip(c, [(k, M[k]) for k in ["Accuracy", "Precision (macro)", "Recall (macro)",
-                                                         "F1-Score (macro)", "ROC-AUC (macro)"]],
+                                                        "F1-Score (macro)", "ROC-AUC (macro)"]],
                                  ["#4F46E5", "#10B981", "#F59E0B", "#EC4899", "#06B6D4"]):
         kpi(col, k, f"{v*100:.1f}%" if "AUC" not in k else f"{v:.3f}", colr)
     st.write("")
@@ -335,7 +309,6 @@ with tabs[1]:
     d["panjang_kata"] = d["content"].astype(str).str.split().str.len()
     b.plotly_chart(px.histogram(d, x="panjang_kata", color="label", nbins=30, barmode="overlay", opacity=.7,
                                 color_discrete_map=cmap, title="Panjang Ulasan (kata)"), width="stretch")
-
     if d["at"].notna().any():
         dd = d.dropna(subset=["at"]).copy()
         dd["Tahun"] = dd["at"].dt.year
@@ -347,7 +320,6 @@ with tabs[1]:
         fig = px.line(r, x="Tahun", y="Rating", markers=True, hover_data=["Jumlah"], title="Rata-rata Rating per Tahun")
         fig.update_traces(line_color="#7C3AED"); fig.update_yaxes(range=[1, 5])
         b.plotly_chart(fig, width="stretch")
-
     st.subheader("Tabel Ulasan")
     q = st.text_input("Cari kata di ulasan")
     tb = d[d["content"].astype(str).str.contains(q, case=False, regex=False)] if q else d
@@ -417,8 +389,8 @@ with tabs[3]:
         mn = int(ev["y_tr"].value_counts().min() * (nf - 1) / nf)
         smp = SMOTE(k_neighbors=min(5, mn - 1), random_state=SEED) if mn - 1 >= 1 else RandomOverSampler(random_state=SEED)
         pipe = ImbPipeline([("tfidf", TfidfVectorizer(ngram_range=vec.ngram_range, max_features=vec.max_features,
-                                                      min_df=vec.min_df, sublinear_tf=True)),
-                            ("smote", smp), ("nb", MultinomialNB(alpha=model.alpha))])
+                                                       min_df=vec.min_df, sublinear_tf=True)),
+                              ("smote", smp), ("nb", MultinomialNB(alpha=model.alpha))])
         with st.spinner("Menghitung..."):
             cv = cross_validate(pipe, ev["X_tr"], ev["y_tr"], cv=StratifiedKFold(nf, shuffle=True, random_state=SEED),
                                 scoring=["accuracy", "f1_macro"])
@@ -467,7 +439,7 @@ with tabs[4]:
     pilih = list(dict.fromkeys(pilih))
     hm = pd.DataFrame(flp[:, pilih].T, index=fitur[pilih], columns=classes)
     st.plotly_chart(px.imshow(hm, aspect="auto", color_continuous_scale="RdPu", text_auto=".1f",
-                              height=max(420, len(hm) * 22)), width="stretch")
+                                height=max(420, len(hm) * 22)), width="stretch")
 
     st.subheader("🔎 Cek pengaruh sebuah kata")
     w = st.text_input("Kata/frasa (hasil stemming, mis. error, mahal, bantu)").strip().lower()
@@ -538,7 +510,7 @@ with tabs[6]:
         if out is None:
             st.warning("Teks kosong setelah dibersihkan. Coba kalimat lain.")
         else:
-            emo = {"Positif": "😀", "Netral": "😐", "Negatif": "😡"}.get(out["pred"], "🤔")
+            emo = {"Positif": "😄", "Netral": "😐", "Negatif": "😡"}.get(out["pred"], "🤔")
             a, b = st.columns([1, 2])
             a.markdown(f'<div class="kpi" style="border-left-color:{cmap[out["pred"]]}"><div class="l">Prediksi</div>'
                        f'<div class="v">{emo} {out["pred"]}</div></div>', unsafe_allow_html=True)
@@ -551,7 +523,7 @@ with tabs[6]:
                 st.dataframe(out["contrib"], width="stretch")
 
     st.divider()
-    st.subheader("📁 Prediksi Batch (CSV)")
+    st.subheader("📂 Prediksi Batch (CSV)")
     up = st.file_uploader("CSV dengan kolom 'content'", type="csv", key="batch")
     if up is not None:
         bdf = pd.read_csv(up)
